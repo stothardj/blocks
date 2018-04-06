@@ -1,0 +1,3 @@
+{:require  [blocks.core]
+ :init-fns []
+ :compiler-options {:infer-externs true}}
