@@ -23,3 +23,16 @@
               (sliding/Sliding. (pos/Position. 3 1) grid)
               (sliding/Sliding. (pos/Position. 4 7) grid)]
      :goal (goal/Goal. (pos/Position. 1 2) grid)}))
+
+(def levels [level1 level2])
+
+(defn get-level [num game-area]
+  ((nth levels num) game-area))
+
+(defn get-at [level pos]
+  (let [same-pos? (comp (partial = pos) :pos)
+        {:keys [blocks goal]} level
+        blocks-at (filter same-pos? blocks)
+        goal-at (if (same-pos? goal) goal nil)
+        m {:blocks blocks-at :goal goal-at}]
+    (into {} (remove (comp empty? val) m))))

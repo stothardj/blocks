@@ -11,24 +11,39 @@
             [blocks.levels :as levels]
             [blocks.direction :as direction]))
 
+(defonce border-size 20)
+
 (defonce game (p/create-game (.-innerWidth js/window) (.-innerHeight js/window)))
 (defonce state (atom {}))
+
+(defn log [x]
+  (.log js/console (clj->js x)))
+
+(defn get-level [num]
+  (let [width (.-innerWidth js/window)
+        height (.-innerHeight js/window)
+        game-width (- width (* 2 border-size))
+        game-height (- height (* 2 border-size))
+        game-area (rect/Rect. border-size border-size game-width game-height)]
+    (levels/get-level num game-area)))
+
+(defn next-level [state]
+  (let [lvlnum (:lvlnum state)
+        num (+ lvlnum 1)]
+    {:level (get-level num)
+     :lvlnum num}))
 
 (def main-screen
   (reify p/Screen
     (on-show [this]
-      (let [width (.-innerWidth js/window)
-            height (.-innerHeight js/window)
-            border-size 20
-            game-width (- width (* 2 border-size))
-            game-height (- height (* 2 border-size))
-            game-area (rect/Rect. border-size border-size game-width game-height)]
-        (reset! state (levels/level1 game-area))))
+      (reset! state {:level (get-level 0)
+                     :lvlnum 0}))
     (on-hide [this])
     (on-render [this]
       (let [width (.-innerWidth js/window)
             height (.-innerHeight js/window)
-            {:keys [grid goal player blocks]} @state]
+            level (:level @state)
+            {:keys [grid goal player blocks]} level]
         (p/render game
                   [[:fill {:color "#f90"}
                     [:rect {:x 0 :y 0 :width width :height height}]]
@@ -45,23 +60,40 @@
   (fn [event]
     (p/set-size game js/window.innerWidth js/window.innerHeight)))
 
+(defn push-blocks [blocks pos dir]
+  (let [same-pos? (partial = pos)
+        split-blocks (group-by (comp same-pos? :pos) blocks)
+        block (get split-blocks true)
+        other-blocks (get split-blocks false)]
+    (when block
+      (block/push (first block) dir other-blocks))))
 
 (defn try-move [dir state]
-  (let [player (:player state)
+  (let [{:keys [level lvlnum]} state
+        {:keys [player blocks]} level
         new-player (character/move player dir)
         new-pos (:pos new-player)
-        bs (:blocks state)
-        same-pos? (partial = new-pos)
-        split-bs (group-by (comp same-pos? :pos) bs)
-        block (get split-bs true)]
-    (if block
-      (let [new-bs (block/push (first block) dir (get split-bs false))]
-        (if new-bs
+        at-pos (levels/get-at level new-pos)]
+    (cond
+      (:blocks at-pos)
+      (let [new-blocks (push-blocks blocks new-pos dir)]
+        (cond
+          (and new-blocks (:goal at-pos))
+          (next-level state)
+
+          new-blocks
           (-> state
-              (assoc-in [:player] new-player)
-              (assoc-in [:blocks] new-bs))
+              (assoc-in [:level :player] new-player)
+              (assoc-in [:level :blocks] new-blocks))
+
+          :else
           state))
-      (assoc-in state [:player] new-player))))
+
+      (:goal at-pos)
+      (next-level state)
+      
+      :else
+      (assoc-in state [:level :player] new-player))))
 
 (events/listen js/window "keydown"
                (fn [event]
