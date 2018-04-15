@@ -4,19 +4,30 @@
             [blocks.character :as character]
             [blocks.position :as pos]
             [blocks.stationary :as stationary]
-            [blocks.sliding :as sliding]))
+            [blocks.sliding :as sliding]
+            [blocks.light :as light]))
 
 (defn pos-obj [grid constr pos]
   (constr (apply pos/->Position pos) grid))
 
 (defn parse-level [grid spec]
-  (let [{:keys [player stationary sliding goal]} spec
+  (let [{:keys [player stationary sliding light goal]} spec
         po (partial pos-obj grid)]
     {:grid grid
      :player (po character/->Character player)
      :blocks (concat (map (partial po stationary/->Stationary) stationary)
-                     (map (partial po sliding/->Sliding) sliding))
+                     (map (partial po sliding/->Sliding) sliding)
+                     (map (partial po light/->Light) light))
      :goal (po goal/->Goal goal)}))
+
+(defn level0 [game-area]
+  (parse-level
+   (grid/Grid. 11 16 game-area)
+   {:player [1 1]
+    :stationary [[3 3] [3 4]]
+    :sliding [[4 3] [4 4]]
+    :light [[6 2] [6 3] [6 4] [6 5]]
+    :goal [7 9]}))
 
 (defn level1 [game-area]
   (parse-level
@@ -41,7 +52,7 @@
               (sliding/Sliding. (pos/Position. 4 7) grid)]
      :goal (goal/Goal. (pos/Position. 1 2) grid)}))
 
-(def levels [level1 level2])
+(def levels [level0 level1 level2])
 
 (defn get-level [num game-area]
   ((nth levels num) game-area))
