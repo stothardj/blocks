@@ -31,4 +31,4 @@
             (conj new-blocks new-block))))))
   drawable/Drawable
   (draw [block]
-    (drawable/draw-rect (:pos block) (:grid block) "#a05")))
+    (drawable/draw-rect (:pos block) (:grid block) "#0f8")))
